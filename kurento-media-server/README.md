@@ -18,8 +18,8 @@ port 8888 for client access. So, assuming you want to map port 8888 in the
 instance to local port 8888, you can start kurento media server with:
 
 ```console
-$ docker run --name kms -p 8888:8888 -d
-kurento/kurento-media-server:6.1.0 ```
+$ docker run --name kms -p 8888:8888 -d kurento/kurento-media-server:6.1.0 
+```
 
 To check that kurento media server is ready and listening, issue the following
 command (you need to have curl installed on your system):
