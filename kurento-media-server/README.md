@@ -66,8 +66,10 @@ $ docker run --rm kurento/kurento-media-server:6.1.0 --help
 ```
 
 ## Using on remote servers
-When used on remote server/VM you need to specify [STUN] server ip/port in order to
-be able to access remote streams. IP/port can be specified with env variables:
+When used on remote server/VM you need to specify STUN 
+(http://www.kurento.org/docs/current/installation\_guide.html?highlight=turn#stun-and-turn-servers)
+server ip/port in order to be able to access remote streams. IP/port can 
+be specified with env variables:
 
 * COTURN\_PORT\_3478\_TCP\_ADDR
 * COTURN\_PORT\_3478\_TCP\_PORT
