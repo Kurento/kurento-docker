@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/sh -x
 set -e
 
 if [ -n "$KMS_TURN_URL" ]; then
