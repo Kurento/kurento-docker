@@ -7,13 +7,20 @@ MAINTAINER Patxi Gortázar <patxi.gortazar@gmail.com>
 
 RUN apt-get update \
   && apt-get -y dist-upgrade \
-	&& apt-get install -y wget
+  && apt-get install -y wget
 
-RUN	echo "deb http://ubuntu.kurento.org/ trusty kms6" | tee /etc/apt/sources.list.d/kurento.list \
-	&& wget -O - http://ubuntu.kurento.org/kurento.gpg.key | apt-key add - \
-	&& apt-get update \
-	&& apt-get -y install kurento-media-server-6.0 \
-	&& apt-get clean \
+RUN echo "deb http://ubuntu.kurento.org/ trusty kms6" | tee /etc/apt/sources.list.d/kurento.list \
+  && wget -O - http://ubuntu.kurento.org/kurento.gpg.key | apt-key add - \
+  && apt-get update \
+  && apt-get -y install kurento-media-server-6.0 \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN echo "deb  http://dist-aws.telmate.com/repo/ubuntu trusty-prod main" | tee /etc/apt/sources.list.d/tm-trusty-prod.list \
+  && wget -O - http://dist-aws.telmate.com/repo/ubuntu/telmate.gpg.key | apt-key add - \
+  && apt-get update \
+  && apt-get -y install kms-framesaver \
+  && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8888
