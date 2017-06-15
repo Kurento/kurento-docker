@@ -19,7 +19,7 @@ RUN echo "deb http://ubuntu.kurento.org/ trusty kms6" | tee /etc/apt/sources.lis
 RUN echo "deb  http://dist-aws.telmate.com/repo/ubuntu trusty-prod main" | tee /etc/apt/sources.list.d/tm-trusty-prod.list \
   && wget -O - http://dist-aws.telmate.com/repo/ubuntu/telmate.gpg.key | apt-key add - \
   && apt-get update \
-  && apt-get -y install kms-framesaver \
+  && apt-get -y install kms-framegrabber \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
