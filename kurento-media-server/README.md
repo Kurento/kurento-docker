@@ -24,7 +24,8 @@ instance to local port 8888, you can start kurento media server with:
 
 ```console
 $ docker run --name kms -p 8888:8888 -d
-kurento/kurento-media-server ```
+kurento/kurento-media-server
+```
 
 To check that kurento media server is ready and listening, issue the following
 command (you need to have curl installed on your system):
