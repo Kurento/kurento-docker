@@ -63,7 +63,7 @@ RUN apt-get update \
         kms-platedetector \
         kms-pointerdetector \
         \
-        bzip2 wget \
+        bzip2 wget curl \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8888
