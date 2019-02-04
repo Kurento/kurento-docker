@@ -34,12 +34,14 @@ MAINTAINER Fede Diaz <nordri@gmail.com>
 MAINTAINER Juan Navarro <juan.navarro@gmx.es>
 
 ARG KMS_VERSION=0.0.0
+ARG KMS_PORT=8888
 
 # Configure environment
 # * LANG: Set the default locale for all commands
 # * DEBIAN_FRONTEND: Disable user-facing questions and messages
 ENV LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive
+ENV KMS_PORT=${KMS_PORT}
 
 # Configure apt-get
 # * Disable installation of recommended and suggested packages
@@ -66,7 +68,7 @@ RUN apt-get update \
         bzip2 wget curl \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-EXPOSE 8888
+EXPOSE ${KMS_PORT}
 
 # Configure environment for KMS
 # * Use default suggested logging levels:
