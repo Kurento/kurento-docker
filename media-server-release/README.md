@@ -5,14 +5,14 @@
 
 [![][KurentoImage]][Kurento]
 
-Copyright © 2013-2016 [Kurento]. Licensed under [Apache 2.0 License].
+Copyright © 2013-2019 [Kurento]. Licensed under [Apache 2.0 License].
 
 kurento-media-server
 ====================
 
 # Source
 
-* [kurento-media-server/Dockerfile](https://github.com/kurento/kurento-docker/blob/master/kurento-media-server/Dockerfile)
+* [kurento-media-server/Dockerfile](https://github.com/kurento/kurento-docker/blob/master/media-server-release/Dockerfile)
 
 # How to use this image
 
