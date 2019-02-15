@@ -65,7 +65,7 @@ RUN apt-get update \
         kms-platedetector \
         kms-pointerdetector \
         \
-        bzip2 wget curl \
+        bzip2 wget curl less net-tools \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 EXPOSE ${KMS_PORT}
