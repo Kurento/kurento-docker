@@ -75,7 +75,10 @@ EXPOSE ${KMS_PORT}
 #   https://doc-kurento.readthedocs.io/en/latest/features/logging.html#suggested-levels
 # * Disable colors in debug logs
 ENV GST_DEBUG="3,Kurento*:4,kms*:4,sdp*:4,webrtc*:4,*rtpendpoint:4,rtp*handler:4,rtpsynchronizer:4,agnosticbin:4" \
-    GST_DEBUG_NO_COLOR=1
+    GST_DEBUG_NO_COLOR=1 \
+    KURENTO_LOGS_PATH="/var/log/kurento-media-server"
+
+VOLUME /var/log/kurento-media-server
 
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./healthchecker.sh /healthchecker.sh
