@@ -1,7 +1,7 @@
 #!/bin/bash -x
 set -e
 
-touch /etc/kurento/modules/kurento/WebRtcEndpoint.conf.ini
+echo "" > /etc/kurento/modules/kurento/WebRtcEndpoint.conf.ini
 
 if [ -n "$KMS_TURN_URL" ]; then
   echo "turnURL=$KMS_TURN_URL" >> /etc/kurento/modules/kurento/WebRtcEndpoint.conf.ini
