@@ -118,6 +118,18 @@ RUN apt-key adv \
         kurento-media-server-dbg \
  && rm -rf /var/lib/apt/lists/*
 
+# Install Avahi packages
+RUN apt-get update && apt-get install --no-install-recommends --yes \
+        avahi-daemon \
+        avahi-utils \
+ && rm -rf /var/lib/apt/lists/*
+
+# volumes
+VOLUME ["/etc/avahi/"]
+
+# disable d-bus
+RUN sed -i 's/.*enable-dbus=.*/enable-dbus=no/' /etc/avahi/avahi-daemon.conf
+
 # Configure environment for KMS. All of this can be overriden with `docker run`.
 # * Use suggested logging levels:
 #   https://doc-kurento.readthedocs.io/en/latest/features/logging.html#suggested-levels
