@@ -73,6 +73,3 @@ cat /etc/hosts | sed '/::1/d' | tee /etc/hosts >/dev/null || true
 
 # Run Kurento Media Server
 exec /usr/bin/kurento-media-server "$@"
-
-# Run Avahi
-exec /etc/init.d/avahi-daemon start "$@"

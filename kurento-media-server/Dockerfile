@@ -124,10 +124,10 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
         avahi-utils \
  && rm -rf /var/lib/apt/lists/*
 
-# volumes
+# Add Avahi volume
 VOLUME ["/etc/avahi/"]
 
-# disable d-bus
+# Disable d-bus on Avahi
 RUN sed -i 's/.*enable-dbus=.*/enable-dbus=no/' /etc/avahi/avahi-daemon.conf
 
 # Configure environment for KMS. All of this can be overriden with `docker run`.
