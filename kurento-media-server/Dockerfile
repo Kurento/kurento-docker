@@ -103,6 +103,18 @@ RUN apt-key adv \
         kurento-dbg \
  && rm -rf /var/lib/apt/lists/*
 
+# Install Avahi packages
+RUN apt-get update && apt-get install --no-install-recommends --yes \
+        avahi-daemon \
+        avahi-utils \
+ && rm -rf /var/lib/apt/lists/*
+
+# Add Avahi volume
+VOLUME ["/etc/avahi/"]
+
+# Disable d-bus on Avahi
+RUN sed -i 's/.*enable-dbus=.*/enable-dbus=no/' /etc/avahi/avahi-daemon.conf
+
 # Configure environment for KMS. All of this can be overriden with `docker run`.
 # * Disable color in debug logs
 # * Provide default empty values for all environment variables supported by
