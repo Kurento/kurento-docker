@@ -1,15 +1,21 @@
+# ====================
 # Kurento Media Server
+# ====================
 #
 # This Docker image is used to run an instance of Kurento Media Server.
 #
 #
-# Build command
-# -------------
 #
-# docker build [Args...] --tag kurento/kurento-media-server:latest .
+# Build Command
+# =============
+#
+# Run:
+#
+#     docker build [Args...] --tag kurento/kurento-media-server:latest .
 #
 #
-# Build arguments
+#
+# Build Arguments
 # ---------------
 #
 # --build-arg UBUNTU_CODENAME=<UbuntuCodename>
@@ -25,72 +31,125 @@
 #
 #   Optional. Default: "dev".
 #
+# --build-arg APT_ARGS=<AptArguments>
 #
-# Run command
-# -----------
+#   <AptArguments> is a string with arguments that will be passed to all
+#   executions of `apt-get`.
 #
-# docker run --name kms -p 8888:8888 kurento/kurento-media-server:latest
+#   Example: To Use an Apt package proxy
+#   Doc: http://manpages.ubuntu.com/manpages/bionic/en/man1/apt-transport-http.1.html#options
+#
+#       APT_ARGS='-o Acquire::http::Proxy=http://user:pass@host:port/'
+#
+#   Optional. Default: None.
+#
+#
+#
+# Run Command
+# ===========
+#
+# Run:
+#
+#     docker run --name kms -p 8888:8888 kurento/kurento-media-server:latest
 #
 # Then, you can follow the logs with the `docker logs` command:
 #
-# docker logs --follow kms >"kms-$(date '+%Y%m%dT%H%M%S').log" 2>&1
+#     docker logs --follow kms >"kms-$(date '+%Y%m%dT%H%M%S').log" 2>&1
 
+
+
+# Global arguments for FROM
 ARG UBUNTU_CODENAME="xenial"
 
-FROM ubuntu:${UBUNTU_CODENAME}
 
-MAINTAINER Patxi Gortázar <patxi.gortazar@gmail.com>
-MAINTAINER Fede Diaz <nordri@gmail.com>
-MAINTAINER Juan Navarro <juan.navarro@gmx.es>
 
-ARG UBUNTU_CODENAME="xenial"
+# Stage: Base system configuration
+# ================================
+
+FROM ubuntu:${UBUNTU_CODENAME} AS ubuntu_base
+
+ARG APT_ARGS=""
+
+# Configure Apt:
+# * DEBIAN_FRONTEND: Disable Apt interactive questions and messages
+# * --quiet: Hide progress bars.
+# * --yes: Assume "Yes" for all confirmation requests.
+# * APT::Install-Recommends=false: Avoid installing non-essential stuff.
+RUN touch /etc/profile \
+ && touch "$HOME"/.bash_profile \
+ && printf "\
+apt-get-install() {\n\
+    (\n\
+        export DEBIAN_FRONTEND=noninteractive\n\
+        /usr/bin/apt-get --quiet $APT_ARGS update \\\\\\n\
+        && /usr/bin/apt-get --quiet --yes -oAPT::Install-Recommends=false $APT_ARGS install \"\$@\"\n\
+    )\n\
+    local RC=\$?\n\
+    rm -rf /var/lib/apt/lists/*\n\
+    return \$RC\n\
+}\n" >>/etc/profile
+
+# FIXME: Workaround for the network errors introduced by our OpenStack CI.
+RUN printf "\
+apt-get-install-fix() {\n\
+    (\n\
+        export DEBIAN_FRONTEND=noninteractive\n\
+        /usr/bin/apt-get --quiet update \\\\\\n\
+        && until /usr/bin/apt-get --quiet --yes -oAPT::Install-Recommends=false install \"\$@\"; do echo FIXME RETRY; done\n\
+    )\n\
+    local RC=\$?\n\
+    rm -rf /var/lib/apt/lists/*\n\
+    return \$RC\n\
+}\n" >>/etc/profile
+
+SHELL ["/bin/bash", "--login", "-x", "-c"]
+
+
+
+# Stage: Install and prepare
+# ==========================
+
+FROM ubuntu_base
+
+LABEL maintainer="Juan Navarro <juan.navarro@gmx.es>"
+
+ARG UBUNTU_CODENAME
+
 ARG KMS_VERSION="dev"
 
 # Configure environment:
-# * DEBIAN_FRONTEND: Disable Apt interactive questions and messages
 # * LANG: Set the default locale for all commands
-ENV DEBIAN_FRONTEND="noninteractive" \
-    LANG="C.UTF-8"
+ENV LANG="C.UTF-8"
 
 # Install required tools:
+# * curl: For `healthchecker.sh`
+# * dnsutils: For `dig` in `getmyip.sh`
 # * gnupg: For `apt-key adv` (since Ubuntu 18.04)
-# * curl: For "entrypoint.sh" and "healthchecker.sh"
-RUN apt-get -q update && apt-get -q install --no-install-recommends --yes \
-        gnupg \
+RUN apt-get-install \
         curl \
- && rm -rf /var/lib/apt/lists/*
+        dnsutils \
+        gnupg
 
-# Configure Apt:
-# * Disable installation of recommended and suggested packages
-# * Add Kurento package repository
-RUN echo 'APT::Install-Recommends "false";' >/etc/apt/apt.conf.d/00recommends \
- && echo 'APT::Install-Suggests "false";' >>/etc/apt/apt.conf.d/00recommends \
- && echo "UBUNTU_CODENAME=${UBUNTU_CODENAME}" \
- && echo "KMS_VERSION=${KMS_VERSION}" \
- && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5AFA7A83 \
+# Add Kurento Apt package repository.
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5AFA7A83 \
  && APT_LIST="deb [arch=amd64] http://ubuntu.openvidu.io/${KMS_VERSION} ${UBUNTU_CODENAME} kms6" \
  && echo "Apt source line: $APT_LIST" \
  && echo "$APT_LIST" >/etc/apt/sources.list.d/kurento.list
 
 # Install Kurento Media Server
-RUN apt-get -q update && apt-get -q install --no-install-recommends --yes \
-        kurento-media-server \
- && rm -rf /var/lib/apt/lists/*
+#RUN apt-get-install kurento-media-server
+#
+# FIXME: apt-get-install-fix is a workaround for the network errors introduced by our OpenStack CI.
+RUN apt-get-install-fix kurento-media-server
 
 # Install additional modules
 # These might not be available, so allow errors
-RUN apt-get -q update && apt-get -q install --no-install-recommends --yes \
-        kms-chroma || true \
- && rm -rf /var/lib/apt/lists/*
-RUN apt-get -q update && apt-get -q install --no-install-recommends --yes \
-        kms-crowddetector || true \
- && rm -rf /var/lib/apt/lists/*
-RUN apt-get -q update && apt-get -q install --no-install-recommends --yes \
-        kms-platedetector || true \
- && rm -rf /var/lib/apt/lists/*
-RUN apt-get -q update && apt-get -q install --no-install-recommends --yes \
-        kms-pointerdetector || true \
- && rm -rf /var/lib/apt/lists/*
+RUN apt-get-install \
+        kms-chroma \
+        kms-crowddetector \
+        kms-platedetector \
+        kms-pointerdetector \
+    || true
 
 # Install debug symbols
 RUN apt-key adv \
@@ -98,19 +157,19 @@ RUN apt-key adv \
         --recv-keys F2EDC64DC5AEE1F6B9C621F0C8CAB6595FDFF622 \
  && echo "deb http://ddebs.ubuntu.com ${UBUNTU_CODENAME} main restricted universe multiverse" >/etc/apt/sources.list.d/ddebs.list \
  && echo "deb http://ddebs.ubuntu.com ${UBUNTU_CODENAME}-updates main restricted universe multiverse" >>/etc/apt/sources.list.d/ddebs.list \
- && apt-get -q update \
- && apt-get -q install --no-install-recommends --yes \
-        kurento-dbg \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get-install-fix kurento-dbg
+#
+# FIXME: apt-get-install-fix is a workaround for the network errors introduced by our OpenStack CI.
 
-# Configure environment for KMS. All of this can be overriden with `docker run`.
+# Configure environment for KMS. All of these can be overriden with `docker run`.
 # * Disable color in debug logs
 # * Provide default empty values for all environment variables supported by
 #   the entrypoint script. This acts more as documentation than really a need.
 ENV GST_DEBUG_NO_COLOR=1 \
     GST_DEBUG="" \
     KMS_MTU="" \
-    KMS_EXTERNAL_ADDRESS="" \
+    KMS_EXTERNAL_IPV4="" \
+    KMS_EXTERNAL_IPV6="" \
     KMS_NETWORK_INTERFACES="" \
     KMS_STUN_IP="" \
     KMS_STUN_PORT="" \
@@ -119,8 +178,9 @@ ENV GST_DEBUG_NO_COLOR=1 \
 # Expose default Kurento RPC control port
 EXPOSE 8888
 
-COPY ./entrypoint.sh /entrypoint.sh
-COPY ./healthchecker.sh /healthchecker.sh
+COPY entrypoint.sh /
+COPY getmyip.sh /
+COPY healthchecker.sh /
 
 HEALTHCHECK --start-period=15s --interval=30s --timeout=3s --retries=1 CMD /healthchecker.sh
 
