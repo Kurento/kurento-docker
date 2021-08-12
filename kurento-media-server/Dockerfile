@@ -143,13 +143,22 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 5AFA7A83 \
 RUN apt-get-install-fix kurento-media-server
 
 # Install additional modules
-# These might not be available, so allow errors
+# These might not be all available, so install separately and allow errors
+RUN apt-get-install kms-chroma || true
+RUN apt-get-install kms-crowddetector || true
+RUN apt-get-install kms-datachannelexample || true
+RUN apt-get-install kms-markerdetector || true
+RUN apt-get-install kms-platedetector || true
+RUN apt-get-install kms-pointerdetector || true
+
+# Install additional tools that are indirectly used by some GStreamer plugins:
+# * gstreamer1.5-tools: Allows running the command `gst-inspect-1.5`.
+#   Useful for troubleshooting and debugging installed GStreamer plugins.
+# * gstreamer1.5-x: Video rendering plugins for X11 and Pango.
+#   Needed by some overlay elements like "textoverlay".
 RUN apt-get-install \
-        kms-chroma \
-        kms-crowddetector \
-        kms-platedetector \
-        kms-pointerdetector \
-    || true
+        gstreamer1.5-tools \
+        gstreamer1.5-x
 
 # Install debug symbols
 RUN apt-key adv \
@@ -161,19 +170,9 @@ RUN apt-key adv \
 #
 # FIXME: apt-get-install-fix is a workaround for the network errors introduced by our OpenStack CI.
 
-# Configure environment for KMS. All of these can be overriden with `docker run`.
-# * Disable color in debug logs
-# * Provide default empty values for all environment variables supported by
-#   the entrypoint script. This acts more as documentation than really a need.
-ENV GST_DEBUG_NO_COLOR=1 \
-    GST_DEBUG="" \
-    KMS_MTU="" \
-    KMS_EXTERNAL_IPV4="" \
-    KMS_EXTERNAL_IPV6="" \
-    KMS_NETWORK_INTERFACES="" \
-    KMS_STUN_IP="" \
-    KMS_STUN_PORT="" \
-    KMS_TURN_URL=""
+# Configure environment for KMS.
+# * Disable color in debug logs.
+ENV GST_DEBUG_NO_COLOR=1
 
 # Expose default Kurento RPC control port
 EXPOSE 8888
