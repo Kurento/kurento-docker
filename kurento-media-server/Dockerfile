@@ -173,6 +173,10 @@ RUN apt-get-install ubuntu-dbgsym-keyring \
 #
 # FIXME: apt-get-install-fix is a workaround for the network errors introduced by our OpenStack CI.
 
+# Install Jemalloc memory allocator.
+RUN apt-get-install \
+        '^libjemalloc.$'
+
 # Expose default Kurento RPC control port.
 EXPOSE 8888
 

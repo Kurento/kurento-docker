@@ -116,7 +116,13 @@ if [ ! -t 1 ]; then
     export GST_DEBUG_NO_COLOR=1
 fi
 
-# Run Kurento Media Server, changing to requested user (if any)
+# Find the full path to the Jemalloc library file.
+JEMALLOC_PATH="$(find /usr/lib/x86_64-linux-gnu/ | grep 'libjemalloc\.so\.[[:digit:]]' | head -n 1)"
+
+# Pass these settings string to Jemalloc.
+JEMALLOC_CONF="abort_conf:true,confirm_conf:true,background_thread:true,metadata_thp:always"
+
+# Run Kurento Media Server, changing to requested User/Group ID (if any).
 RUN_UID="$(id -u)"
 if [[ -n "${KMS_UID:-}" && "$KMS_UID" != "$RUN_UID" ]]; then
     echo "[Docker entrypoint] Start Kurento Media Server, UID: $KMS_UID"
@@ -130,15 +136,20 @@ if [[ -n "${KMS_UID:-}" && "$KMS_UID" != "$RUN_UID" ]]; then
         --gid "$KMS_UID" \
         kurento
 
-    # Run KMS as a child PID; normally, Docker best practices dictate that
-    # the main process should run as PID 1. However this is OK as `runuser`
-    # monitors and wraps the child process, passing through all input/output
-    # and any incoming signal.
-    # See: https://unix.stackexchange.com/questions/269254/why-does-util-linux-runuser-su-fork/269330#269330
-    exec runuser --user kurento --group kurento -- /usr/bin/kurento-media-server "$*"
+    # `exec` replaces the current shell process, running Kurento as PID 1.
+    # `setpriv` sets the given User/Group ID for the process.
+    # `env` sets environment variables for the process.
+    exec setpriv --reuid kurento --regid kurento --init-groups env \
+    LD_PRELOAD="$JEMALLOC_PATH" \
+    MALLOC_CONF="$JEMALLOC_CONF" \
+    /usr/bin/kurento-media-server "$*"
 else
     echo "[Docker entrypoint] Start Kurento Media Server, UID: $RUN_UID"
 
-    # Run KMS as PID 1 (replace the current process)
-    exec /usr/bin/kurento-media-server "$*"
+    # `exec` replaces the current shell process, running Kurento as PID 1.
+    # `env` sets environment variables for the process.
+    exec env \
+    LD_PRELOAD="$JEMALLOC_PATH" \
+    MALLOC_CONF="$JEMALLOC_CONF" \
+    /usr/bin/kurento-media-server "$*"
 fi
