@@ -9,7 +9,7 @@ set -o errexit -o errtrace -o pipefail -o nounset
 set -o xtrace
 
 # Trap functions
-function on_error() {
+function on_error {
     echo "[Docker entrypoint] ERROR ($?)"
     exit 1
 }
@@ -29,7 +29,7 @@ WEBRTC_FILE="/etc/kurento/modules/kurento/WebRtcEndpoint.conf.ini"
 }
 
 # Aux function: set value to a given parameter
-function set_parameter() {
+function set_parameter {
     # Assignments fail if any argument is missing (set -o nounset)
     local FILE="$1"
     local PARAM="$2"
@@ -109,6 +109,31 @@ if [[ -z "${GST_DEBUG:-}" ]]; then
     export GST_DEBUG="2,Kurento*:4,kms*:4,sdp*:4,webrtc*:4,*rtpendpoint:4,rtp*handler:4,rtpsynchronizer:4,agnosticbin:4"
 fi
 
+# Error logging (stderr)
+# If a logs path has been set, use it to redirect stderr.
+KURENTO_ERR_FILE=""
+function parse_logs_path {
+    # Try with the env var, `KURENTO_LOGS_PATH`.
+    if [[ -n "${KURENTO_LOGS_PATH:-}" ]]; then
+        KURENTO_ERR_FILE="$KURENTO_LOGS_PATH/errors.log"
+        return
+    fi
+
+    # Try with the call arguments.
+    while [[ $# -gt 0 ]]; do
+        case "${1-}" in
+            --logs-path|-d)
+                if [[ -n "${2-}" ]]; then
+                    KURENTO_ERR_FILE="$2/errors.log"
+                    return
+                fi
+                ;;
+        esac
+        shift
+    done
+}
+parse_logs_path "$@"
+
 # Disable output colors when running without a terminal.
 # This prevents terminal control codes from ending up in Docker log storage.
 if [ ! -t 1 ]; then
@@ -123,33 +148,43 @@ JEMALLOC_PATH="$(find /usr/lib/x86_64-linux-gnu/ | grep 'libjemalloc\.so\.[[:dig
 JEMALLOC_CONF="abort_conf:true,confirm_conf:true,background_thread:true,metadata_thp:always"
 
 # Run Kurento Media Server, changing to requested User/Group ID (if any).
-RUN_UID="$(id -u)"
-if [[ -n "${KMS_UID:-}" && "$KMS_UID" != "$RUN_UID" ]]; then
-    echo "[Docker entrypoint] Start Kurento Media Server, UID: $KMS_UID"
+function run_kurento {
+    local RUN_UID; RUN_UID="$(id -u)"
 
-    groupmod \
-        --gid "$KMS_UID" \
-        kurento
+    if [[ -n "${KMS_UID:-}" && "$KMS_UID" != "$RUN_UID" ]]; then
+        echo "[Docker entrypoint] Start Kurento Media Server, UID: $KMS_UID"
 
-    usermod \
-        --uid "$KMS_UID" \
-        --gid "$KMS_UID" \
-        kurento
+        groupmod \
+            --gid "$KMS_UID" \
+            kurento
 
-    # `exec` replaces the current shell process, running Kurento as PID 1.
-    # `setpriv` sets the given User/Group ID for the process.
-    # `env` sets environment variables for the process.
-    exec setpriv --reuid kurento --regid kurento --init-groups env \
-    LD_PRELOAD="$JEMALLOC_PATH" \
-    MALLOC_CONF="$JEMALLOC_CONF" \
-    /usr/bin/kurento-media-server "$*"
+        usermod \
+            --uid "$KMS_UID" \
+            --gid "$KMS_UID" \
+            kurento
+
+        # `exec` replaces the current shell process, running Kurento as PID 1.
+        # `setpriv` sets the given User/Group ID for the process.
+        # `env` sets environment variables for the process.
+        exec setpriv --reuid kurento --regid kurento --init-groups env \
+        LD_PRELOAD="$JEMALLOC_PATH" \
+        MALLOC_CONF="$JEMALLOC_CONF" \
+        /usr/bin/kurento-media-server "$@"
+    else
+        echo "[Docker entrypoint] Start Kurento Media Server, UID: $RUN_UID"
+
+        # `exec` replaces the current shell process, running Kurento as PID 1.
+        # `env` sets environment variables for the process.
+        exec env \
+        LD_PRELOAD="$JEMALLOC_PATH" \
+        MALLOC_CONF="$JEMALLOC_CONF" \
+        /usr/bin/kurento-media-server "$@"
+    fi
+}
+
+if [[ -n "$KURENTO_ERR_FILE" ]]; then
+    echo -e "\n\n$(date --iso-8601=seconds) -- New execution" >>"$KURENTO_ERR_FILE"
+    run_kurento "$@" 2>>"$KURENTO_ERR_FILE"
 else
-    echo "[Docker entrypoint] Start Kurento Media Server, UID: $RUN_UID"
-
-    # `exec` replaces the current shell process, running Kurento as PID 1.
-    # `env` sets environment variables for the process.
-    exec env \
-    LD_PRELOAD="$JEMALLOC_PATH" \
-    MALLOC_CONF="$JEMALLOC_CONF" \
-    /usr/bin/kurento-media-server "$*"
+    run_kurento "$@"
 fi
